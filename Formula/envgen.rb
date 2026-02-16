@@ -1,0 +1,38 @@
+class Envgen < Formula
+  desc "Generate .env files from declarative YAML schemas"
+  homepage "https://github.com/smorinlabs/envgen"
+  url "https://github.com/smorinlabs/envgen/archive/refs/tags/v1.0.0.tar.gz"
+  sha256 "826189ecfdb787928128ad623052b9484cc5bfce1710222310814236082b7a6d"
+  license "MIT"
+  head "https://github.com/smorinlabs/envgen.git", branch: "main"
+
+  depends_on "rust" => :build
+
+  def install
+    system "cargo", "install", *std_cargo_args
+  end
+
+  test do
+    (testpath/"envgen.yaml").write <<~YAML
+      schema_version: "2"
+      metadata:
+        description: "Homebrew test schema"
+        destination:
+          local: ".env.local"
+      environments:
+        local: {}
+      sources: {}
+      variables:
+        APP_NAME:
+          description: "App name"
+          source: static
+          values:
+            local: "envgen"
+    YAML
+
+    system bin/"envgen", "check", "-c", "envgen.yaml"
+    system bin/"envgen", "pull", "-c", "envgen.yaml", "-e", "local", "--force"
+    assert_match "APP_NAME=envgen", (testpath/".env.local").read
+    assert_match version.to_s, shell_output("#{bin}/envgen --version")
+  end
+end
