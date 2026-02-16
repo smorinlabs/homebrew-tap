@@ -1,8 +1,8 @@
 class Envgen < Formula
   desc "Generate .env files from declarative YAML schemas"
   homepage "https://github.com/smorinlabs/envgen"
-  url "https://github.com/smorinlabs/envgen/archive/refs/tags/v1.0.2.tar.gz"
-  sha256 "594dca1eaa4ecc6c0f4eacbfb3e23c01a9a40e2046e8ed8928393ab9c1c7a691"
+  url "https://github.com/smorinlabs/envgen/archive/refs/tags/v1.0.3.tar.gz"
+  sha256 "a21394ca439903e82a7d1e43be2f25f12d28e96b620ed60b98ad5d6dcc69dadc"
   license "MIT"
   head "https://github.com/smorinlabs/envgen.git", branch: "main"
 
