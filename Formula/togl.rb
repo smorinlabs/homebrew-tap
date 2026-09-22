@@ -1,7 +1,8 @@
 class Togl < Formula
   desc "CLI tool for toggling code comments across multiple languages"
   homepage "https://github.com/smorin/toggle"
-  version "0.5.2"
+  url "https://github.com/smorin/toggle/releases/download/v0.5.2/togl-x86_64-unknown-linux-gnu.tar.gz"
+  sha256 "c72162b5ebae992f0ba2d89abbf806dc494656203fc2abf1ec1258d5e598a34e"
   license "MIT"
 
   on_macos do
@@ -13,6 +14,10 @@ class Togl < Formula
       url "https://github.com/smorin/toggle/releases/download/v0.5.2/togl-x86_64-apple-darwin.tar.gz"
       sha256 "6dfddc55466abb9fb036ae46ccdd50e27efedb90689b5c43d4230a27728a2c0e"
     end
+  end
+
+  on_linux do
+    depends_on arch: :x86_64
   end
 
   def install
