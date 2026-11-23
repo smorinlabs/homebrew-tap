@@ -9,7 +9,7 @@ on:
 jobs:
   # Tap syntax (`brew style`, `brew readall --os=all --arch=all`, `brew audit`)
   # does not need a macOS host, so it runs once on Linux instead of on every
-  # matrix leg. It was the slowest step on macos-15-intel (~5 min).
+  # matrix leg.
   tap-syntax:
     runs-on: ubuntu-24.04
     permissions:
@@ -80,7 +80,7 @@ jobs:
     if: needs.changes.outputs.formulae != 'false'
     strategy:
       matrix:
-        os: [ubuntu-24.04, macos-15-intel, macos-26]
+        os: [ubuntu-24.04, macos-26]
     runs-on: ${{ matrix.os }}
     permissions:
       actions: read
@@ -101,8 +101,7 @@ jobs:
           key: ${{ matrix.os }}-rubygems-${{ steps.set-up-homebrew.outputs.gems-hash }}
           restore-keys: ${{ matrix.os }}-rubygems-
 
-      # Required before formula builds: on macos-15-intel it purges the
-      # preinstalled /usr/local content so builds start from a clean prefix.
+      # Purges leftover prefix content so formula builds start clean.
       - run: brew test-bot --only-cleanup-before
 
       - run: brew test-bot --only-setup
