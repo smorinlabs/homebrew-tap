@@ -7,7 +7,77 @@ on:
   pull_request:
 
 jobs:
+  # Tap syntax (`brew style`, `brew readall --os=all --arch=all`, `brew audit`)
+  # does not need a macOS host, so it runs once on Linux instead of on every
+  # matrix leg. It was the slowest step on macos-15-intel (~5 min).
+  tap-syntax:
+    runs-on: ubuntu-24.04
+    permissions:
+      actions: read
+      checks: read
+      contents: read
+      pull-requests: read
+    steps:
+      - name: Set up Homebrew
+        id: set-up-homebrew
+        uses: Homebrew/actions/setup-homebrew@main
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Cache Homebrew Bundler RubyGems
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.set-up-homebrew.outputs.gems-path }}
+          key: ubuntu-24.04-rubygems-${{ steps.set-up-homebrew.outputs.gems-hash }}
+          restore-keys: ubuntu-24.04-rubygems-
+
+      - run: brew test-bot --only-cleanup-before
+
+      - run: brew test-bot --only-setup
+
+      - run: brew test-bot --only-tap-syntax
+
+      # `brew audit` evaluates the host platform's formula variant; repeat it
+      # with macOS simulated (as homebrew-core's tap_syntax job does) so the
+      # macOS variants are still audited.
+      - name: brew test-bot --only-tap-syntax (simulated macOS)
+        run: brew test-bot --only-tap-syntax
+        env:
+          HOMEBREW_SIMULATE_MACOS_ON_LINUX: 1
+
+  # Decides whether the per-OS formula matrix needs to run for this PR.
+  # Fails open: any API error means "run the matrix".
+  changes:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      formulae: ${{ steps.filter.outputs.formulae }}
+    steps:
+      - name: Detect formula or test workflow changes
+        id: filter
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          if ! files=$(gh api --paginate "repos/${REPO}/pulls/${PR_NUMBER}/files" --jq '.[].filename'); then
+            echo "::warning::Could not list PR files; running the formula matrix."
+            echo "formulae=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          printf '%s\n' "$files"
+          if printf '%s\n' "$files" | grep -qE '^(Formula/|\.github/workflows/tests\.yml$)'; then
+            echo "formulae=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "formulae=false" >> "$GITHUB_OUTPUT"
+          fi
+
   test-bot:
+    needs: changes
+    if: needs.changes.outputs.formulae != 'false'
     strategy:
       matrix:
         os: [ubuntu-24.04, macos-15-intel, macos-26]
@@ -31,17 +101,16 @@ jobs:
           key: ${{ matrix.os }}-rubygems-${{ steps.set-up-homebrew.outputs.gems-hash }}
           restore-keys: ${{ matrix.os }}-rubygems-
 
+      # Required before formula builds: on macos-15-intel it purges the
+      # preinstalled /usr/local content so builds start from a clean prefix.
       - run: brew test-bot --only-cleanup-before
 
       - run: brew test-bot --only-setup
 
-      - run: brew test-bot --only-tap-syntax
-
       - run: brew test-bot --only-formulae
-        if: github.event_name == 'pull_request'
 
       - name: Upload bottles as artifact
-        if: always() && github.event_name == 'pull_request'
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: bottles_${{ matrix.os }}
